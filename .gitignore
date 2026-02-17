@@ -1,4 +1,11 @@
 # Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# Frontend build outputs
 frontend/*.o
 frontend/parser
 
@@ -7,6 +14,14 @@ frontend/lex.yy.c
 frontend/yac.tab.c
 frontend/yac.tab.h
 frontend/yac.output
+
+# Optimizer binary
+/optimizations/optimizer
+
+# Generated IR / test outputs
+*.bc
+*.ll.tmp
+*.out.ll
+
 # macOS
 .DS_Store
-
