@@ -26,6 +26,8 @@ Write to a file directly:
 ./optimizer ./tests/optimizations/p4_const_prop.ll /tmp/out.ll
 ```
 
+CLI: `./optimizer [--local] <input.ll> [output.ll]` (prints to stdout if `output.ll` is omitted)
+
 ## Tests
 Run the full test suite (ignores ModuleID and PIC Level diffs):
 
