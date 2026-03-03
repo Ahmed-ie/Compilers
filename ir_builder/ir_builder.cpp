@@ -1,3 +1,14 @@
+/*
+ * MiniC LLVM IR Builder
+ * Author: Ahmed Elmi
+ * Course: CS57
+ *
+ * Implementation highlights:
+ * - Prepass renames declarations/uses to unique names.
+ * - Function codegen uses entry allocas and a unified return block.
+ * - Statement codegen builds explicit CFG for if/while constructs.
+ */
+
 #include "ir_builder.h"
 
 #include <llvm-c/Core.h>
@@ -58,6 +69,7 @@ class Renamer {
     }
 
     void renameDecl(char *&nameSlot) {
+        // Each declaration gets a distinct name to avoid scope collisions in IR maps.
         const std::string oldName(nameSlot);
         const std::string unique = makeUnique(oldName);
         scopes_.back()[oldName] = unique;
@@ -168,6 +180,7 @@ struct BuildContext {
     LLVMBasicBlockRef retBB = nullptr;
 };
 
+// Collect all declared variable names so allocas can be emitted in function entry.
 void collectDeclNamesFromStmt(astNode *node, std::set<std::string> *names) {
     if (!node || node->type != ast_stmt) {
         return;
@@ -228,6 +241,7 @@ LLVMValueRef getVarPtr(const char *name, BuildContext *ctx) {
 }
 
 void branchIfUnterminated(LLVMBuilderRef builder, LLVMBasicBlockRef from, LLVMBasicBlockRef to) {
+    // Avoid creating malformed IR with duplicate terminators.
     if (!LLVMGetBasicBlockTerminator(from)) {
         LLVMPositionBuilderAtEnd(builder, from);
         LLVMBuildBr(builder, to);
@@ -320,8 +334,10 @@ LLVMBasicBlockRef genStmt(astNode *stmtNode, LLVMBasicBlockRef startBB, BuildCon
         case ast_ret: {
             LLVMPositionBuilderAtEnd(ctx->builder, startBB);
             LLVMValueRef retVal = genExpr(stmt.ret.expr, ctx);
+            // Return statements store into ret slot, then jump to the shared ret block.
             LLVMBuildStore(ctx->builder, retVal, ctx->retAlloca);
             LLVMBuildBr(ctx->builder, ctx->retBB);
+            // Return a fresh block for sequencing, then prune unreachable blocks later.
             return LLVMAppendBasicBlock(ctx->currentFunc, "after_ret");
         }
 
@@ -336,6 +352,7 @@ LLVMBasicBlockRef genStmt(astNode *stmtNode, LLVMBasicBlockRef startBB, BuildCon
         case ast_if: {
             LLVMPositionBuilderAtEnd(ctx->builder, startBB);
             LLVMValueRef cond = genExpr(stmt.ifn.cond, ctx);
+            // CFG shape: start -> {if_true, if_false} -> optional if_end.
             LLVMBasicBlockRef trueBB = LLVMAppendBasicBlock(ctx->currentFunc, "if_true");
             LLVMBasicBlockRef falseBB = LLVMAppendBasicBlock(ctx->currentFunc, "if_false");
             LLVMBuildCondBr(ctx->builder, cond, trueBB, falseBB);
@@ -356,6 +373,7 @@ LLVMBasicBlockRef genStmt(astNode *stmtNode, LLVMBasicBlockRef startBB, BuildCon
 
         case ast_while: {
             LLVMPositionBuilderAtEnd(ctx->builder, startBB);
+            // CFG shape: start -> while_cond -> {while_body, while_end}, body loops back to cond.
             LLVMBasicBlockRef condBB = LLVMAppendBasicBlock(ctx->currentFunc, "while_cond");
             LLVMBasicBlockRef bodyBB = LLVMAppendBasicBlock(ctx->currentFunc, "while_body");
             LLVMBasicBlockRef endBB = LLVMAppendBasicBlock(ctx->currentFunc, "while_end");
@@ -385,6 +403,7 @@ void removeUnreachableBlocks(LLVMValueRef func) {
     q.push(entry);
     reachable.insert(entry);
 
+    // BFS from entry to identify reachable blocks.
     while (!q.empty()) {
         LLVMBasicBlockRef bb = q.front();
         q.pop();
@@ -433,12 +452,14 @@ LLVMValueRef buildFunction(astNode *funcNode, BuildContext *ctx) {
     }
     collectDeclNamesFromStmt(funcNode->func.body, &names);
 
+    // Emit all local/parameter allocas in entry as required by assignment.
     for (const std::string &name : names) {
         LLVMValueRef allocaInst = LLVMBuildAlloca(ctx->builder, LLVMInt32Type(), name.c_str());
         LLVMSetAlignment(allocaInst, 4);
         ctx->varMap[name] = allocaInst;
     }
 
+    // Dedicated slot for function result used by all return statements.
     ctx->retAlloca = LLVMBuildAlloca(ctx->builder, LLVMInt32Type(), "ret_slot");
     LLVMSetAlignment(ctx->retAlloca, 4);
     LLVMBuildStore(ctx->builder, LLVMConstInt(LLVMInt32Type(), 0, 1), ctx->retAlloca);
@@ -449,6 +470,7 @@ LLVMValueRef buildFunction(astNode *funcNode, BuildContext *ctx) {
 
     ctx->retBB = LLVMAppendBasicBlock(fn, "ret");
     LLVMPositionBuilderAtEnd(ctx->builder, ctx->retBB);
+    // Unified exit: load final return value and emit `ret`.
     LLVMValueRef rv = LLVMBuildLoad2(ctx->builder, LLVMInt32Type(), ctx->retAlloca, "retval");
     LLVMBuildRet(ctx->builder, rv);
 

@@ -1,3 +1,12 @@
+/*
+ * MiniC IR Builder Driver
+ * Author: Ahmed Elmi
+ * Course: CS57
+ *
+ * Pipeline:
+ * parse -> semantic analysis -> variable renaming -> LLVM IR generation.
+ */
+
 #include <cstdio>
 #include <cstdlib>
 
@@ -45,6 +54,7 @@ int main(int argc, char **argv) {
         return 2;
     }
 
+    // IR generation assumes semantic checks have already passed.
     if (semanticAnalysis(root)) {
         std::fprintf(stderr, "Semantic analysis unsuccessful.\n");
         cleanup();
@@ -52,11 +62,13 @@ int main(int argc, char **argv) {
         return 3;
     }
 
+    // Preprocess names so shadowed declarations map cleanly to a single var map.
     renameVariables(root);
     LLVMModuleRef module = buildModuleFromAst(root);
 
     char *err = nullptr;
     if (argc == 3) {
+        // Optional file output mode: write IR to the requested path.
         if (LLVMPrintModuleToFile(module, argv[2], &err) != 0) {
             std::fprintf(stderr, "Failed to write LLVM IR: %s\n", err ? err : "unknown error");
             if (err) {
@@ -68,6 +80,7 @@ int main(int argc, char **argv) {
             return 4;
         }
     } else {
+        // Default mode: print IR to stdout.
         char *ir = LLVMPrintModuleToString(module);
         if (ir) {
             std::printf("%s", ir);
