@@ -69,7 +69,7 @@ class Renamer {
     }
 
     void renameDecl(char *&nameSlot) {
-        // Each declaration gets a distinct name to avoid scope collisions in IR maps.
+        // Give each declaration its own name so nested scopes do not collide later.
         const std::string oldName(nameSlot);
         const std::string unique = makeUnique(oldName);
         scopes_.back()[oldName] = unique;
@@ -79,6 +79,7 @@ class Renamer {
     void renameVarUse(char *&nameSlot) {
         std::string mapped;
         if (resolve(nameSlot, &mapped)) {
+            // Rewrite uses to the renamed declaration they actually refer to.
             replaceName(nameSlot, mapped);
         }
     }

@@ -18,6 +18,10 @@ frontend/yac.output
 # Optimizer binary
 /optimizations/optimizer
 
+# Backend build outputs
+/backend/backend
+/backend/*.o
+
 # Generated IR / test outputs
 *.bc
 *.ll.tmp
