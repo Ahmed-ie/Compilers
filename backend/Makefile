@@ -1,5 +1,9 @@
 CXX = g++
-LLVM_CONFIG ?= $(if $(wildcard /opt/homebrew/opt/llvm/bin/llvm-config),/opt/homebrew/opt/llvm/bin/llvm-config,llvm-config)
+LLVM_CONFIG ?= $(shell if [ -x /opt/homebrew/opt/llvm/bin/llvm-config ]; then echo /opt/homebrew/opt/llvm/bin/llvm-config; \
+	elif command -v llvm-config >/dev/null 2>&1; then echo llvm-config; \
+	elif command -v llvm-config-18 >/dev/null 2>&1; then echo llvm-config-18; \
+	elif command -v llvm-config-17 >/dev/null 2>&1; then echo llvm-config-17; \
+	else echo llvm-config; fi)
 
 TARGET = backend
 
@@ -9,7 +13,7 @@ LDLIBS += $(shell $(LLVM_CONFIG) --system-libs --libs core irreader support)
 
 OBJS = main.o
 
-.PHONY: all clean smoke-test
+.PHONY: all clean smoke-test test
 
 all: $(TARGET)
 
@@ -22,6 +26,10 @@ $(TARGET): $(OBJS)
 smoke-test: $(TARGET)
 	./$(TARGET) /tmp/minic_backend_test.ll /tmp/minic_backend_test.s
 	@echo "Wrote /tmp/minic_backend_test.s"
+
+test: $(TARGET)
+	chmod a+x testing.sh
+	./testing.sh
 
 clean:
 	rm -f $(TARGET) $(OBJS) /tmp/minic_backend_test.s

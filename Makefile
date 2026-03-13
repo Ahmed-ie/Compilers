@@ -1,4 +1,4 @@
-.PHONY: all frontend ir-builder optimizations backend clean test-builder test-parser test-semantic test-optimizations
+.PHONY: all frontend ir-builder optimizations backend clean test-builder test-parser test-semantic test-optimizations test-backend
 
 all: frontend ir-builder optimizations backend
 
@@ -25,6 +25,9 @@ test-builder:
 
 test-optimizations:
 	$(MAKE) -C optimizations test
+
+test-backend:
+	$(MAKE) -C backend test
 
 clean:
 	$(MAKE) -C frontend clean
