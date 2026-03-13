@@ -19,6 +19,11 @@ if ! command -v clang >/dev/null 2>&1; then
     exit 1
 fi
 
+if [ "$(uname -s)" != "Linux" ]; then
+    echo "Skipping backend runtime tests: requires Linux with clang -m32."
+    exit 0
+fi
+
 if [ ! -x "$BACKEND_BIN" ]; then
     echo "Backend binary not found at $BACKEND_BIN"
     echo "Build first with: make LLVM_CONFIG=<llvm-config-version>"
@@ -29,7 +34,10 @@ fi
 cat > "$TMP_DIR/test32.c" <<'EOF'
 int main(void) { return 0; }
 EOF
-clang -m32 "$TMP_DIR/test32.c" -o "$TMP_DIR/test32"
+if ! clang -m32 "$TMP_DIR/test32.c" -o "$TMP_DIR/test32" >/dev/null 2>&1; then
+    echo "Skipping backend runtime tests: clang -m32 is not available on this machine."
+    exit 0
+fi
 
 overall=0
 pass_count=0

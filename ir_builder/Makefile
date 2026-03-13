@@ -21,6 +21,8 @@ LDLIBS += $(shell $(LLVM_CONFIG) --libs core)
 
 OBJS = yac.tab.o lex.yy.o ast.o semantic_analysis.o ir_builder.o main.o
 
+.PHONY: all run test-builder clean
+
 all: $(TARGET)
 
 $(YACC_C) $(YACC_H): $(YACC_SRC)
@@ -55,11 +57,8 @@ run: $(TARGET)
 	@echo "Wrote /tmp/p1.ll"
 
 test-builder: $(TARGET)
-	@for f in ../tests/builder_tests/p*.c; do \
-		out=/tmp/$$(basename $$f .c).ll; \
-		echo "== $$f -> $$out =="; \
-		./$(TARGET) "$$f" "$$out" || exit $$?; \
-	done
+	chmod a+x testing.sh
+	./testing.sh
 
 clean:
 	rm -f $(TARGET) *.o $(YACC_C) $(YACC_H) $(LEX_C) yac.output /tmp/p1.ll /tmp/p2.ll /tmp/p3.ll /tmp/p4.ll /tmp/p5.ll /tmp/p6.ll

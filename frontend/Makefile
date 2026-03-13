@@ -39,17 +39,11 @@ $(TARGET): $(OBJS)
 	$(CC) -o $(TARGET) $(OBJS)
 
 parser-tests: $(TARGET)
-	@for f in ../tests/parser/p*.c; do \
-		echo "== $$f =="; \
-		./$(TARGET) "$$f"; \
-		echo; \
-	done
+	chmod a+x testing.sh
+	./testing.sh parser
 
 semantic-tests: $(TARGET)
-	@for f in ../tests/semantic/p*.c; do \
-		echo "== $$f =="; \
-		./$(TARGET) "$$f"; \
-		echo; \
-	done
+	chmod a+x testing.sh
+	./testing.sh semantic
 clean:
 	rm -f $(TARGET) *.o $(YACC_C) $(YACC_H) $(LEX_C) yac.output
