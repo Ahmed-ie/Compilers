@@ -3,7 +3,7 @@
 # MiniCCompiler
 ## Ahmed Elmi 
 
-This here contains the first part of MiniC Compiler Project - a frontend that parses MiniC programs and runs semantic analysis.
+This project now contains the MiniC compiler pipeline through backend assembly generation.
 
 ## Requirements
 - `g++`
@@ -11,29 +11,43 @@ This here contains the first part of MiniC Compiler Project - a frontend that pa
 - `bison`
 
 ## Build
-From the `frontend` directory:
+Build everything from the project root:
 
 ```sh
 make
 ```
 
-This produces the `parser` binary in `frontend/`.
+This produces:
+- `frontend/parser`
+- `ir_builder/ir_builder`
+- `optimizations/optimizer`
+- `backend/backend`
 
 ## Run
-From the `frontend` directory:
 
+Frontend parse + semantic analysis:
 ```sh
-./parser path/to/file.c
+./frontend/parser path/to/file.c
 ```
 
-Expected output:
-- `Parsing successful.` on a valid parse
-- `Semantic analysis successful.` when semantic checks pass
+LLVM IR generation:
+```sh
+./ir_builder/ir_builder ./tests/builder_tests/p1.c /tmp/p1.ll
+```
 
-Non-zero exit codes indicate an error:
-- `1`: input file could not be opened
-- `2`: parsing failed
-- `3`: semantic analysis failed
+Optimization:
+```sh
+./optimizations/optimizer /tmp/p1.ll /tmp/p1_opt.ll
+```
+
+Backend assembly generation:
+```sh
+./backend/backend /tmp/p1_opt.ll /tmp/p1.s
+```
+
+The backend consumes LLVM IR (`.ll`) and emits AT&T-style x86 32-bit assembly (`.s`).
+It uses a custom basic-block-local register allocator over `ebx`, `ecx`, and `edx`, with
+`eax` reserved for returns, call results, and temporary emission as required by the assignment.
 
 ## Tests
 From the `frontend` directory:
@@ -45,5 +59,7 @@ make semantic-tests
 
 ## Project structure
 - `frontend/` core lexer, parser, AST, and semantic analysis
+- `ir_builder/` AST-to-LLVM IR generation
+- `optimizations/` LLVM IR optimization passes
+- `backend/` LLVM IR to x86 assembly generation
 - `tests/` sample parser and semantic test programs
-

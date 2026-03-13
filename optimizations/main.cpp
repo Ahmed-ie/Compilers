@@ -138,7 +138,7 @@ static bool common_subexpr_elim_module(LLVMModuleRef module) {
 
                 if (op == LLVMStore) {
                     LLVMValueRef ptr = LLVMGetOperand(inst, 1);
-                    // Any store can invalidate a previous load from the same pointer in this block.
+                    // A store kills any reusable load from that same address in this block.
                     last_load_for_ptr.erase(ptr);
                     continue;
                 }
@@ -151,6 +151,7 @@ static bool common_subexpr_elim_module(LLVMModuleRef module) {
                     LLVMValueRef ptr = LLVMGetOperand(inst, 0);
                     auto it = last_load_for_ptr.find(ptr);
                     if (it != last_load_for_ptr.end()) {
+                        // Reuse the earlier load when nothing has written through this pointer.
                         LLVMReplaceAllUsesWith(inst, it->second);
                         changed = true;
                     } else {
@@ -468,6 +469,7 @@ int main(int argc, char **argv) {
     while (changed) {
         changed = false;
         if (enable_constprop) {
+            // Propagation can uncover more constants after each pass, so iterate to a fixpoint.
             changed |= constant_propagation_module(module);
         }
         changed |= constant_fold_module(module);
